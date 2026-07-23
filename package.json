@@ -1,0 +1,20 @@
+{
+  "name": "firstbridge-ai",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev": "concurrently \"pnpm dev:frontend\" \"pnpm dev:backend\"",
+    "test:apis": "pnpm --filter backend tsx scripts/test-all-apis.ts",
+    "seed": "pnpm --filter backend tsx scripts/seed-scholarships.ts",
+    "seed:demo": "pnpm --filter backend tsx scripts/seed-demo-accounts.ts",
+    "verify": "pnpm --filter backend tsx scripts/verify-demo-flow.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

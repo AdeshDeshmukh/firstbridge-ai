@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment files - NEVER commit these
+.env
+.env.local
+.env.production
+.env.development
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+/tmp/
+*.tmp
+*.webm
+*.wav
+*.mp4
+
+# Prisma
+backend/prisma/*.db
+
+# Sentry
+.sentryclirc
