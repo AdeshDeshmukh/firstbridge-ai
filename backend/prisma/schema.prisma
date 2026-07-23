@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  role      String   @default("student")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profile          StudentProfile?
+  consents         StudentConsent[]
+  conversations    Conversation[]
+  memorySnapshot   MemorySnapshot?
+  interviewSessions InterviewSession[]
+  interviewScores  InterviewScore[]
+  savedScholarships SavedScholarship[]
+  photoEnhancements PhotoEnhancement[]
+  distressSignals  DistressSignal[]
+  usageEvents      UsageEvent[]
+  nudges           Nudge[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  firstName        String?  @map("first_name")
+  lastName         String?  @map("last_name")
+  university       String?
+  major            String?
+  year             Int?
+  isFirstGen       Boolean  @default(true) @map("is_first_gen")
+  priority         String?
+  onboardingDone   Boolean  @default(false) @map("onboarding_done")
+  profileComplete  Int      @default(0) @map("profile_complete")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("student_profiles")
+}
+
+model StudentConsent {
+  id                    String    @id @default(uuid())
+  userId                String?   @map("user_id")
+  consentVersion        String    @default("1.0") @map("consent_version")
+  conversationStorage   Boolean   @map("conversation_storage")
+  videoProcessing       Boolean   @map("video_processing")
+  emailNotifications    Boolean   @default(false) @map("email_notifications")
+  photoStorage          Boolean   @default(false) @map("photo_storage")
+  anonymousAnalytics    Boolean   @default(false) @map("anonymous_analytics")
+  ipAddress             String?   @map("ip_address")
+  grantedAt             DateTime  @default(now()) @map("granted_at")
+  withdrawnAt           DateTime? @map("withdrawn_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, withdrawnAt])
+  @@map("student_consents")
+}
+
+model University {
+  id                 String    @id @default(uuid())
+  name               String
+  domain             String?   @unique
+  stripeCustomerId   String?   @unique @map("stripe_customer_id")
+  subscriptionStatus String    @default("inactive") @map("subscription_status")
+  subscriptionTier   String?   @map("subscription_tier")
+  subscriptionId     String?   @map("subscription_id")
+  currentPeriodEnd   DateTime? @map("current_period_end")
+  studentLimit       Int       @default(500) @map("student_limit")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  usageEvents UsageEvent[]
+
+  @@index([stripeCustomerId])
+  @@index([domain])
+  @@map("universities")
+}
+
+model Scholarship {
+  id             String    @id @default(uuid())
+  name           String
+  organization   String
+  amount         Int
+  deadline       DateTime
+  description    String?
+  eligibility    String?
+  majors         String[]
+  url            String
+  isActive       Boolean   @default(true) @map("is_active")
+  sourceVerified Boolean   @default(true) @map("source_verified")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  savedBy SavedScholarship[]
+
+  @@index([deadline])
+  @@index([amount])
+  @@index([isActive])
+  @@map("scholarships")
+}
+
+model SavedScholarship {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  scholarshipId     String   @map("scholarship_id")
+  applicationStatus String   @default("saved") @map("application_status")
+  savedAt           DateTime @default(now()) @map("saved_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scholarship Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scholarshipId])
+  @@index([userId])
+  @@index([userId, applicationStatus])
+  @@map("saved_scholarships")
+}
+
+model Conversation {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  agentType   String   @map("agent_type")
+  role        String
+  content     String
+  backboardId String?  @map("backboard_id")
+  sessionId   String?  @map("session_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, agentType])
+  @@index([sessionId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model MemorySnapshot {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  structuredFacts Json     @default("{}") @map("structured_facts")
+  lastUpdated     DateTime @default(now()) @map("last_updated")
+  version         Int      @default(1)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("memory_snapshots")
+}
+
+model InterviewSession {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  status          String    @default("processing")
+  questionPrompt  String    @map("question_prompt")
+  durationSeconds Int?      @map("duration_seconds")
+  storageKey      String?   @map("storage_key")
+  perFrameScores  Json?     @map("per_frame_scores")
+  partialResults  Boolean   @default(false) @map("partial_results")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  completedAt     DateTime? @map("completed_at")
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scores InterviewScore?
+  breakdowns ScoreBreakdown[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("interview_sessions")
+}
+
+model InterviewScore {
+  id               String   @id @default(uuid())
+  sessionId        String   @unique @map("session_id")
+  userId           String   @map("user_id")
+  eyeContactScore  Int?     @map("eye_contact_score")
+  engagementScore  Int?     @map("engagement_score")
+  confidenceLevel  String?  @map("confidence_level")
+  fillerWordCount  Int?     @map("filler_word_count")
+  wordsPerMinute   Int?     @map("words_per_minute")
+  transcriptText   String?  @map("transcript_text")
+  atlasFeedback    String   @map("atlas_feedback")
+  partialResults   Boolean  @default(false) @map("partial_results")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("interview_scores")
+}
+
+model ScoreBreakdown {
+  id               String  @id @default(uuid())
+  sessionId        String  @map("session_id")
+  metric           String
+  rawValue         Float   @map("raw_value")
+  normalizedScore  Int?    @map("normalized_score")
+  methodologyNote  String? @map("methodology_note")
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("score_breakdowns")
+}
+
+model PhotoEnhancement {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  originalKey  String?   @map("original_key")
+  enhancedKey  String?   @map("enhanced_key")
+  youcamFailed Boolean   @default(false) @map("youcam_failed")
+  downloaded   Boolean   @default(false)
+  downloadedAt DateTime? @map("downloaded_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("photo_enhancements")
+}
+
+model DistressSignal {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  messageHash    String   @map("message_hash")
+  severity       String
+  agentType      String   @map("agent_type")
+  resourceShown  Boolean  @default(false) @map("resource_shown")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("distress_signals")
+}
+
+model UsageEvent {
+  id           String   @id @default(uuid())
+  universityId String?  @map("university_id")
+  userId       String?  @map("user_id")
+  eventType    String   @map("event_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  university University? @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([universityId, createdAt])
+  @@index([eventType])
+  @@map("usage_events")
+}
+
+model Nudge {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  nudgeType  String   @map("nudge_type")
+  sentAt     DateTime @default(now()) @map("sent_at")
+  sendgridId String?  @map("sendgrid_id")
+  status     String   @default("sent")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("nudges")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String
+  ipAddress String?  @map("ip_address")
+  requestId String?  @map("request_id")
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
