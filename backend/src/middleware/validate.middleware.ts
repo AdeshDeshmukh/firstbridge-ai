@@ -7,14 +7,13 @@ export function validate(schema: ZodSchema) {
     try {
       const parsed = schema.parse(req.body)
 
-      // Replace req.body with the validated, sanitized version
+
       req.body = parsed
 
       next()
     } catch (err) {
       if (err instanceof ZodError) {
-        // Return structured field-level errors
-        // Never expose internal schema structure
+
         const errors = err.errors.map((e) => ({
           field: e.path.join('.'),
           message: e.message,
