@@ -1,10 +1,5 @@
-// backend/src/lib/schemas.ts
-// All Zod validation schemas in one place
-// Import from here in all route files
-
 import { z } from 'zod'
 
-// ─── AUTH SCHEMAS ────────────────────────────────────────────────────────────
 
 export const signupSchema = z.object({
   email: z
@@ -23,7 +18,6 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 })
 
-// ─── CONSENT SCHEMAS ─────────────────────────────────────────────────────────
 
 export const consentGrantSchema = z.object({
   conversationStorage: z.literal(true, {
@@ -37,7 +31,6 @@ export const consentGrantSchema = z.object({
   anonymousAnalytics: z.boolean().default(false),
 })
 
-// ─── ONBOARDING SCHEMAS ──────────────────────────────────────────────────────
 
 export const onboardingSchema = z.object({
   firstName: z.string().trim().max(50).optional(),
@@ -51,7 +44,6 @@ export const onboardingSchema = z.object({
     .optional(),
 })
 
-// ─── AGENT SCHEMAS ───────────────────────────────────────────────────────────
 
 export const agentMessageSchema = z.object({
   message: z
@@ -59,9 +51,11 @@ export const agentMessageSchema = z.object({
     .trim()
     .min(1, 'Message cannot be empty')
     .max(2000, 'Message is too long'),
+
+  sessionId: z.string().uuid().optional(),
 })
 
-// ─── PROFILE SCHEMAS ─────────────────────────────────────────────────────────
+// PROFILE SCHEMAS
 
 export const profileUpdateSchema = z.object({
   firstName: z.string().trim().max(50).optional(),
@@ -71,8 +65,51 @@ export const profileUpdateSchema = z.object({
   year: z.number().int().min(1).max(6).optional(),
 })
 
-// ─── SCHOLARSHIP STATUS SCHEMA ───────────────────────────────────────────────
+// SCHOLARSHIP STATUS SCHEM
 
 export const scholarshipStatusSchema = z.object({
   status: z.enum(['saved', 'applied', 'submitted']),
+})
+
+
+export const interviewUploadSchema = z.object({
+  questionPrompt: z.string().trim().min(1).max(500),
+  durationSeconds: z.number().int().positive().max(1800).optional(),
+})
+
+// PHOTO
+
+export const photoEnhancementSchema = z.object({
+  style: z.enum(['professional', 'casual', 'academic']).default('professional'),
+})
+
+// SCHOLARSHIP SEARCH
+
+export const scholarshipSearchSchema = z.object({
+  major: z.string().trim().max(100).optional(),
+  minAmount: z.coerce.number().nonnegative().optional(),
+  maxAmount: z.coerce.number().positive().optional(),
+  activeOnly: z.coerce.boolean().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  sortBy: z.enum(['deadline', 'amount', 'newest']).default('deadline'),
+  order: z.enum(['asc', 'desc']).default('asc'),
+})
+
+
+export const exportDataSchema = z.object({
+  format: z.enum(['json', 'csv']).default('json'),
+})
+
+export const deleteAccountSchema = z.object({
+  confirm: z.literal(true, {
+    errorMap: () => ({ message: 'You must confirm account deletion' }),
+  }),
+})
+
+
+
+export const checkoutSchema = z.object({
+  priceId: z.string().min(1),
+  universityId: z.string().uuid().optional(),
 })

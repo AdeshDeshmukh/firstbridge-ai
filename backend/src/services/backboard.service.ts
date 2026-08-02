@@ -1,5 +1,15 @@
+
+
+//   1. Circuit breaker  — stop hammering an agent that's clearly down
+//   2. Timeout           — never let one call hang the request forever
+//   3. Retry + backoff   — absorb transient blips (network hiccups, 429, 5xx)
+//   4. Custom errors     — so the route layer can react appropriately,
+//                          not just show a generic "something went wrong"
+
 import logger from '../utils/logger'
 import { backboardConfig, getAgentId, AgentName } from '../lib/backboard'
+
+// CUSTOM ERRORS
 
 
 export class BackboardTimeoutError extends Error {
@@ -23,17 +33,12 @@ export class BackboardError extends Error {
   }
 }
 
-// Thrown immediately, without attempting a network call, when the circuit
-// for an agent is OPEN. This is the whole point of a circuit breaker: fail
-// fast and cheap instead of piling up slow, doomed requests against an
-// agent that's already known to be down.
 export class BackboardCircuitOpenError extends Error {
   constructor(public readonly agent: AgentName, public readonly retryAt: Date) {
     super(`Circuit open for "${agent}" — service assumed unavailable until ${retryAt.toISOString()}`)
     this.name = 'BackboardCircuitOpenError'
   }
 }
-
 export interface SendMessageParams {
   agent: AgentName
   userId: string
@@ -53,12 +58,7 @@ interface BackboardRequestBody {
   message: string
   context: Record<string, unknown>
 }
-
-
 // CIRCUIT BREAKER
-// One breaker per agent (Vera / Grant / Atlas) rather than one global
-// breaker — if Atlas's upstream agent is misbehaving, Vera and Grant should
-// still be usable. Classic 3-state machine:
 
 
 enum CircuitState {
@@ -68,8 +68,8 @@ enum CircuitState {
 }
 
 interface CircuitBreakerOptions {
-  failureThreshold: number
-  resetTimeoutMs: number
+  failureThreshold: number // consecutive failures before opening
+  resetTimeoutMs: number // how long to stay OPEN before trying HALF_OPEN
 }
 
 class CircuitBreaker {
@@ -80,7 +80,6 @@ class CircuitBreaker {
 
   constructor(private readonly agent: AgentName, private readonly options: CircuitBreakerOptions) {}
 
-  // Called before every attempt. Throws if the circuit won't allow a call.
   assertCanRequest(): void {
     if (this.state === CircuitState.OPEN) {
       const elapsed = Date.now() - (this.openedAt ?? 0)
@@ -88,13 +87,14 @@ class CircuitBreaker {
         const retryAt = new Date((this.openedAt ?? 0) + this.options.resetTimeoutMs)
         throw new BackboardCircuitOpenError(this.agent, retryAt)
       }
-      // Reset window has elapsed — allow exactly one trial request through.
+
       this.state = CircuitState.HALF_OPEN
       this.halfOpenInFlight = false
       logger.info('Backboard circuit half-open, allowing trial request', { agent: this.agent })
     }
 
     if (this.state === CircuitState.HALF_OPEN && this.halfOpenInFlight) {
+
       const retryAt = new Date((this.openedAt ?? 0) + this.options.resetTimeoutMs)
       throw new BackboardCircuitOpenError(this.agent, retryAt)
     }
@@ -160,6 +160,7 @@ function getBreaker(agent: AgentName): CircuitBreaker {
   return breaker
 }
 
+
 const MAX_RETRIES = 2
 const RETRY_BASE_DELAY_MS = 300
 const RETRY_MAX_DELAY_MS = 4_000
@@ -178,9 +179,6 @@ function isRetryableStatus(status: number | undefined): boolean {
   if (status === undefined) return true // network error / no response at all
   return status === 429 || status >= 500
 }
-
-
-// CORE REQUEST (timeout + single attempt; retry loop wraps this)
 
 
 async function attemptRequest(
@@ -212,7 +210,7 @@ async function attemptRequest(
       throw new BackboardError(`Backboard returned ${response.status}`, response.status)
     }
 
-    const data = await response.json()
+    const data = (await response.json()) as { reply: string; [key: string]: unknown }
     return { reply: data.reply, raw: data }
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
@@ -231,7 +229,6 @@ async function attemptRequest(
     clearTimeout(timeoutHandle)
   }
 }
-
 
 async function requestWithRetry(
   agent: AgentName,
@@ -271,12 +268,11 @@ async function requestWithRetry(
 }
 
 
-// PUBLIC API
-
-
 export async function sendMessage(params: SendMessageParams): Promise<BackboardReply> {
   const { agent, userId, message, context } = params
   const breaker = getBreaker(agent)
+
+  // Circuit check happens BEFORE any network call or retry attempt — the
 
   breaker.assertCanRequest()
 
@@ -290,6 +286,7 @@ export async function sendMessage(params: SendMessageParams): Promise<BackboardR
     throw err
   }
 }
+
 
 export function getBackboardCircuitState(agent: AgentName): CircuitState {
   return getBreaker(agent).getState()

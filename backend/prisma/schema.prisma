@@ -249,18 +249,77 @@ model DistressSignal {
   @@map("distress_signals")
 }
 
+enum UsageEventType {
+  AI_CHAT
+  SCHOLARSHIP
+  INTERVIEW
+  PHOTO
+  PROFILE
+  LOGIN
+  EXPORT
+}
+
+enum AgentType {
+  VERA
+  GRANT
+  ATLAS
+}
+
+enum ChatCategory {
+  CAREER
+  SCHOLARSHIP
+  INTERVIEW
+  RESUME
+  LEARNING
+  PLACEMENT
+  HACKATHON
+  CERTIFICATION
+  GENERAL
+}
+
+enum ScholarshipAction {
+  VIEWED
+  SAVED
+  APPLIED
+  REMOVED
+}
+
 model UsageEvent {
-  id           String   @id @default(uuid())
-  universityId String?  @map("university_id")
-  userId       String?  @map("user_id")
-  eventType    String   @map("event_type")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id           String         @id @default(uuid())
+  universityId String?        @map("university_id")
+  userId       String?        @map("user_id")
+  eventType    UsageEventType @map("event_type")
+
+  // AI chat fields — only set when eventType = AI_CHAT
+  agent          AgentType?
+  chatCategory   ChatCategory?  @map("chat_category")
+  sessionId      String?        @map("session_id")
+  tokensUsed     Int?           @map("tokens_used")
+  responseTimeMs Int?           @map("response_time_ms")
+
+  // Scholarship fields — only set when eventType = SCHOLARSHIP
+  scholarshipId     String?            @map("scholarship_id")
+  scholarshipAction ScholarshipAction? @map("scholarship_action")
+
+  // Interview fields — only set when eventType = INTERVIEW
+  interviewId    String? @map("interview_id")
+  interviewScore Float?  @map("interview_score")
+
+  // Recommendation quality — how well this scholarship matched the user's
+  // profile/memory at the moment they viewed/saved/applied. Lets you later
+  // ask "do high-scored recommendations actually get saved more?"
+  relevanceScore Float? @map("relevance_score")
+
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
 
   university University? @relation(fields: [universityId], references: [id], onDelete: SetNull)
   user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@index([universityId, createdAt])
+  @@index([userId, createdAt])
   @@index([eventType])
+  @@index([agent])
+  @@index([universityId, createdAt])
   @@map("usage_events")
 }
 

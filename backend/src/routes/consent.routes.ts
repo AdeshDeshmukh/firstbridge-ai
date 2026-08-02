@@ -8,7 +8,7 @@ import { auditLog } from '../middleware/audit.middleware'
 import { consentGrantSchema } from '../lib/schemas'
 import logger from '../utils/logger'
 
-const router = Router()
+const router: Router = Router()
 
 // ─── POST /consent/grant ─────────────────────────────────────────────────────
 router.post(

@@ -1,9 +1,12 @@
+
+
+import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import logger from '../utils/logger'
 import { AgentName } from '../lib/backboard'
 import { findMatchingScholarships } from './scholarship.service'
 
-const HISTORY_LIMIT = 20 // per-agent messages pulled into context
+const HISTORY_LIMIT = 20 // per-agent messages pulled into context; keeps
 
 
 export async function getMemorySnapshot(userId: string): Promise<Record<string, unknown>> {
@@ -13,7 +16,6 @@ export async function getMemorySnapshot(userId: string): Promise<Record<string, 
   })
   return (snapshot?.structuredFacts as Record<string, unknown>) ?? {}
 }
-
 export async function getRecentHistory(userId: string, limit = HISTORY_LIMIT) {
   return prisma.conversation.findMany({
     where: { userId },
@@ -41,6 +43,7 @@ export async function buildContextForAgent(userId: string, agent: AgentName) {
   }
 
   if (agent === 'grant') {
+
     try {
       context.matchingScholarships = await findMatchingScholarships(userId)
     } catch (err) {
@@ -94,6 +97,68 @@ export async function saveMessage(params: {
   )
 }
 
+//IN-MEMORY FACT CACHE
+
+const factCache = new Map<string, Set<string>>()
+const MAX_CACHED_FACTS = 50
+
+export function addFactsToCache(userId: string, facts: string[]): string[] {
+  const set = factCache.get(userId) ?? new Set<string>()
+  for (const f of facts) {
+    const clean = f.trim().toLowerCase()
+    if (clean) set.add(clean)
+  }
+  // cap size so one chatty user can't grow this map forever
+  const capped = Array.from(set).slice(-MAX_CACHED_FACTS)
+  const cappedSet = new Set(capped)
+  factCache.set(userId, cappedSet)
+  return Array.from(cappedSet)
+}
+
+export function getCachedFacts(userId: string): string[] {
+  return Array.from(factCache.get(userId) ?? [])
+}
+
+
+
+interface Bucket {
+  tokens: number
+  lastRefill: number
+}
+const buckets = new Map<string, Bucket>()
+const BUCKET_CAPACITY = 20
+const REFILL_PER_SEC = 1
+
+export function tryConsumeToken(userId: string): boolean {
+  const now = Date.now()
+  const bucket = buckets.get(userId) ?? { tokens: BUCKET_CAPACITY, lastRefill: now }
+
+  const elapsedSec = (now - bucket.lastRefill) / 1000
+  bucket.tokens = Math.min(BUCKET_CAPACITY, bucket.tokens + elapsedSec * REFILL_PER_SEC)
+  bucket.lastRefill = now
+
+  if (bucket.tokens < 1) {
+    buckets.set(userId, bucket)
+    return false
+  }
+  bucket.tokens -= 1
+  buckets.set(userId, bucket)
+  return true
+}
+
+export function extractFactsFromReply(raw: unknown): Record<string, unknown> {
+  if (
+    raw &&
+    typeof raw === 'object' &&
+    'extractedFacts' in raw &&
+    typeof (raw as { extractedFacts: unknown }).extractedFacts === 'object' &&
+    (raw as { extractedFacts: unknown }).extractedFacts !== null
+  ) {
+    return (raw as { extractedFacts: Record<string, unknown> }).extractedFacts
+  }
+  return {}
+}
+
 export async function updateMemorySnapshot(
   userId: string,
   newFacts: Record<string, unknown>
@@ -106,11 +171,11 @@ export async function updateMemorySnapshot(
       where: { userId },
       create: {
         userId,
-        structuredFacts: merged,
+        structuredFacts: merged as Prisma.InputJsonValue,
         version: 1,
       },
       update: {
-        structuredFacts: merged,
+        structuredFacts: merged as Prisma.InputJsonValue,
         version: { increment: 1 },
         lastUpdated: new Date(),
       },

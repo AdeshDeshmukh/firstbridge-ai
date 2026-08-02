@@ -1,6 +1,6 @@
-// backend/src/middleware/audit.middleware.ts
 
 import { Request, Response, NextFunction } from 'express'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { AuthenticatedRequest } from './auth.middleware'
 import logger from '../utils/logger'
@@ -12,10 +12,6 @@ type AuditAction =
   | 'consent_withdraw'
   | 'agent_call'
   | 'interview_upload'
-
-// Logs sensitive data access to the audit_logs table
-// Called directly from route handlers (not as Express middleware)
-// because we need full context of what happened
 
 export async function auditLog(
   action: AuditAction,
@@ -31,12 +27,10 @@ export async function auditLog(
         action,
         requestId,
         ipAddress,
-        metadata,
+        metadata: metadata as Prisma.InputJsonValue,
       }
     })
   } catch (err) {
-    // Audit log failure should not break the request
-    // But we do want to know about it
     logger.error('Failed to write audit log', {
       action,
       userId,
@@ -45,8 +39,6 @@ export async function auditLog(
   }
 }
 
-// Express middleware version — automatically audits the request
-// Used as middleware on specific sensitive routes
 export function auditMiddleware(action: AuditAction) {
   return async (
     req: Request,
@@ -56,12 +48,7 @@ export function auditMiddleware(action: AuditAction) {
     const userId = (req as AuthenticatedRequest).user?.id || null
     const requestId = (req as AuthenticatedRequest & { requestId?: string }).requestId
     const ipAddress = req.ip || req.socket.remoteAddress
-
-    // Fire and forget — does not block the response
-    auditLog(action, userId, requestId, ipAddress).catch(() => {
-      // Already handled inside auditLog
-    })
-
+    auditLog(action, userId, requestId, ipAddress).catch(() => {})
     next()
   }
 }
