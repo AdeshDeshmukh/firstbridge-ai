@@ -8,7 +8,7 @@ import { validate } from '../middleware/validate.middleware'
 import { onboardingSchema } from '../lib/schemas'
 import logger from '../utils/logger'
 
-const router = Router()
+const router: Router = Router()
 
 // ─── POST /onboarding/complete ───────────────────────────────────────────────
 router.post(

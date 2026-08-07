@@ -8,7 +8,7 @@ import { authMiddleware, AuthenticatedRequest } from '../middleware/auth.middlew
 import { signupSchema, loginSchema } from '../lib/schemas'
 import logger from '../utils/logger'
 
-const router = Router()
+const router: Router = Router()
 
 // ─── POST /auth/signup ───────────────────────────────────────────────────────
 router.post('/signup', validate(signupSchema), async (req: Request, res: Response) => {

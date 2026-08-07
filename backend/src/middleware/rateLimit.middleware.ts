@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit'
 import { RedisStore } from 'rate-limit-redis'
+import type { RedisReply } from 'rate-limit-redis'
 import { redis } from '../lib/redis'
 
 export const generalRateLimit = rateLimit({
@@ -11,7 +12,7 @@ export const generalRateLimit = rateLimit({
     return userId || req.ip || 'unknown'
   },
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redis.call(...args as [string, ...string[]]),
+    sendCommand: (...args: string[]) => redis.call(...args as [string, ...string[]]) as Promise<RedisReply>,
   }),
   message: {
     error: 'Too many requests',
@@ -22,7 +23,7 @@ export const generalRateLimit = rateLimit({
 })
 
 // 2. Agent routes — 10 requests per minute per user
-// Prevents abuse of AI endpoints which cost money per call
+
 export const agentRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
@@ -31,7 +32,7 @@ export const agentRateLimit = rateLimit({
     return `agent:${userId || req.ip}`
   },
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redis.call(...args as [string, ...string[]]),
+    sendCommand: (...args: string[]) => redis.call(...args as [string, ...string[]]) as Promise<RedisReply>,
   }),
   message: {
     error: 'Agent rate limit exceeded. Please wait before sending another message.',
@@ -41,8 +42,6 @@ export const agentRateLimit = rateLimit({
   legacyHeaders: false,
 })
 
-// 3. Upload routes — 5 requests per hour per user
-// Interview video + photo uploads
 export const uploadRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
@@ -51,7 +50,7 @@ export const uploadRateLimit = rateLimit({
     return `upload:${userId || req.ip}`
   },
   store: new RedisStore({
-    sendCommand: (...args: string[]) => redis.call(...args as [string, ...string[]]),
+    sendCommand: (...args: string[]) => redis.call(...args as [string, ...string[]]) as Promise<RedisReply>,
   }),
   message: {
     error: 'Upload limit reached. Maximum 5 uploads per hour.',

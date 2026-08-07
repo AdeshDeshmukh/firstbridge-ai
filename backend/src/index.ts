@@ -1,5 +1,3 @@
-// backend/src/index.ts
-// BOOT ORDER IS CRITICAL — DO NOT REORDER
 
 import * as Sentry from '@sentry/node'
 
@@ -10,7 +8,7 @@ Sentry.init({
   tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
 })
 
-import express from 'express'
+import express, { Express } from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import logger from './utils/logger'
@@ -24,7 +22,7 @@ import authRouter from './routes/auth.routes'
 import consentRouter from './routes/consent.routes'
 import onboardingRouter from './routes/onboarding.routes'
 
-const app = express()
+const app: Express = express()
 const PORT = process.env.PORT || 3001
 
 // 2. CORS — whitelist only
@@ -47,9 +45,7 @@ app.use(cors({
 }))
 
 // 3. Stripe webhook needs raw body — registered BEFORE express.json()
-// Stripe routes added in Phase 3 (Day 6)
-// Placeholder comment keeps the boot order documented:
-// app.post('/stripe/webhook', express.raw({ type: 'application/json' }), stripeHandler)
+
 
 // 4. JSON body parsing — AFTER stripe webhook
 app.use(express.json({ limit: '1mb' }))
@@ -68,7 +64,7 @@ app.use((req, res, next) => {
   logger.info('Incoming request', {
     method: req.method,
     path: req.path,
-    requestId: (req as Request & { requestId?: string }).requestId,
+    requestId: (req as unknown as { requestId?: string }).requestId,
   })
   next()
 })
@@ -91,7 +87,8 @@ app.use((req, res) => {
 })
 
 // 11. Sentry error handler (must be before errorBoundary)
-app.use(Sentry.Handlers.errorHandler())
+
+Sentry.setupExpressErrorHandler(app)
 
 // 12. Error boundary — MUST BE LAST
 app.use(errorBoundaryMiddleware)

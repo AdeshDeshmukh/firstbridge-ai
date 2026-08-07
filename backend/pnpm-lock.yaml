@@ -19,7 +19,7 @@ importers:
         version: 5.22.0(prisma@5.22.0)
       '@sendgrid/mail':
         specifier: ^8.1.3
-        version: 8.1.6
+        version: 8.1.6(debug@4.4.3)
       '@sentry/node':
         specifier: ^8.34.0
         version: 8.55.2
@@ -2070,10 +2070,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@sendgrid/client@8.1.6':
+  '@sendgrid/client@8.1.6(debug@4.4.3)':
     dependencies:
       '@sendgrid/helpers': 8.0.0
-      axios: 1.18.1
+      axios: 1.18.1(debug@4.4.3)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -2082,9 +2082,9 @@ snapshots:
     dependencies:
       deepmerge: 4.3.1
 
-  '@sendgrid/mail@8.1.6':
+  '@sendgrid/mail@8.1.6(debug@4.4.3)':
     dependencies:
-      '@sendgrid/client': 8.1.6
+      '@sendgrid/client': 8.1.6(debug@4.4.3)
       '@sendgrid/helpers': 8.0.0
     transitivePeerDependencies:
       - debug
@@ -2322,9 +2322,9 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@1.18.1:
+  axios@1.18.1(debug@4.4.3):
     dependencies:
-      follow-redirects: 1.16.0
+      follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -2573,7 +2573,9 @@ snapshots:
 
   fn.name@1.1.0: {}
 
-  follow-redirects@1.16.0: {}
+  follow-redirects@1.16.0(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3
 
   form-data@4.0.6:
     dependencies:
