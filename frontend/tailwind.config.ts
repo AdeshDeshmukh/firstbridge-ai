@@ -16,7 +16,7 @@ const config: Config = {
           success: '#10b981', // emerald-500
           warning: '#f59e0b', // amber-500
           danger: '#ef4444', // red-500
-          background: '#faf9f6', // light cream
+          background: '#FDFBD4', // cream
           surface: '#ffffff',
         },
         vera: {
