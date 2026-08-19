@@ -16,7 +16,7 @@ import {
   BackboardError,
   BackboardCircuitOpenError,
 } from '../services/backboard.service'
-import { buildContextForAgent, saveMessage, extractFactsFromReply, tryConsumeToken } from '../services/context.service'
+import { buildContextForAgent, saveMessage, extractFactsFromReply, tryConsumeToken, getMemorySnapshot } from '../services/context.service'
 import { enqueueMemoryUpdate } from '../queues/memory.queue'
 import { checkDistress } from '../services/distress.service'
 import { logUsageEvent, agentToEnum, defaultChatCategory } from '../services/usage.service'
@@ -149,6 +149,17 @@ router.post(
     }
   }
 )
+
+router.get('/memory', authMiddleware, async (req: Request, res: Response) => {
+  const { id: userId } = (req as AuthenticatedRequest).user
+  try {
+    const facts = await getMemorySnapshot(userId)
+    res.status(200).json({ facts })
+  } catch (err) {
+    logger.error('Failed to get memory snapshot', { userId, message: (err as Error).message })
+    res.status(550).json({ error: 'Failed to fetch memory snapshot' })
+  }
+})
 
 router.get('/:agentType/history', authMiddleware, async (req: Request, res: Response) => {
   const { agentType } = req.params
