@@ -120,17 +120,16 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Module 3: Atlas (Careers - Locked) */}
+        {/* Module 3: Atlas (Careers) */}
         <div>
           <ModuleCard
             title="Interview Preparation"
-            description="Atlas analyzes your posture, gaze, and speech flow in-browser to coach you through mock interview sessions. Locked until Phase 2."
+            description="Atlas analyzes your posture, gaze, and speech flow in-browser to coach you through mock interview sessions."
             advisorName="Atlas"
             icon={BookOpen}
             link="/interview"
             colorClass="text-atlas hover:text-blue-700"
             accentClass="bg-blue-50 text-atlas border border-blue-100"
-            locked={true}
           />
         </div>
       </div>

@@ -23,6 +23,7 @@ import consentRouter from './routes/consent.routes'
 import onboardingRouter from './routes/onboarding.routes'
 import agentsRouter from './routes/agents.routes'
 import scholarshipsRouter from './routes/scholarships.routes'
+import interviewRouter from './routes/interview.routes'
 
 const app: Express = express()
 const PORT = process.env.PORT || 3001
@@ -81,6 +82,7 @@ app.use('/consent', consentRouter)
 app.use('/onboarding', onboardingRouter)
 app.use('/agents', agentsRouter)
 app.use('/scholarships', scholarshipsRouter)
+app.use('/interview', interviewRouter)
 
 // 10. 404 handler
 app.use((req, res) => {
